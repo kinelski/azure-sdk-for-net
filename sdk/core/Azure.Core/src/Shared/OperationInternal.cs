@@ -8,24 +8,66 @@ using Azure.Core.Pipeline;
 
 namespace Azure.Core
 {
-    internal class OperationInternal<T>
+    internal class OperationInternal<TValue, TResult>
     {
         private ClientDiagnostics _clientDiagnostics;
 
-        private bool _hasCompleted;
-
         private Response _rawResponse;
 
-        public OperationInternal(ClientDiagnostics clientDiagnostics)
+        private string _operationTypeName;
+
+        private TValue _value;
+
+        private RequestFailedException _requestFailedException;
+
+        private Func<CancellationToken, Task<Response<TResult>>> _getResponseAsync;
+
+        private Func<CancellationToken, Response<TResult>> _getResponse;
+
+        private Func<Response<TResult>, OperationInternalResponseStatus> _getStatus;
+
+        private Func<Response<TResult>, TValue> _parseResponse;
+
+        private Func<Response<TResult>, RequestFailedException> _getFailure;
+
+        public OperationInternal(ClientDiagnostics clientDiagnostics,
+            string operationTypeName,
+            Func<CancellationToken, Task<Response<TResult>>> getResponseAsync,
+            Func<CancellationToken, Response<TResult>> getResponse,
+            Func<Response<TResult>, OperationInternalResponseStatus> getStatus,
+            Func<Response<TResult>, TValue> parseResponse,
+            Func<Response<TResult>, RequestFailedException> getFailure)
         {
             _clientDiagnostics = clientDiagnostics;
+            _operationTypeName = operationTypeName;
+            _getResponseAsync = getResponseAsync;
+            _getResponse = getResponse;
+            _getStatus = getStatus;
+            _parseResponse = parseResponse;
+            _getFailure = getFailure;
         }
 
-        public enum OperationStatus
+        public bool HasCompleted { get; private set; }
+
+        public bool HasValue { get; private set; }
+
+        public TValue Value
         {
-            Succeeded,
-            Failed,
-            Pending
+            get
+            {
+                if (HasValue)
+                {
+                    return _value;
+                }
+                else if (_requestFailedException != null)
+                {
+                    throw _requestFailedException;
+                }
+                else
+                {
+                    throw new InvalidOperationException("The operation has not completed yet.");
+                }
+            }
         }
 
         public Response GetRawResponse() => _rawResponse;
@@ -36,23 +78,61 @@ namespace Azure.Core
         public Response UpdateStatus(CancellationToken cancellationToken) =>
             UpdateStatusAsync(async: false, cancellationToken).EnsureCompleted();
 
+        // TODO: set polling time.
+        public async ValueTask<Response<TValue>> WaitForCompletionAsync(CancellationToken cancellationToken) =>
+            await WaitForCompletionAsync(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+
+        public async ValueTask<Response<TValue>> WaitForCompletionAsync(TimeSpan pollingInterval, CancellationToken cancellationToken)
+        {
+            while (true)
+            {
+                await UpdateStatusAsync(cancellationToken).ConfigureAwait(false);
+                if (HasCompleted)
+                {
+                    return Response.FromValue(Value, GetRawResponse());
+                }
+
+                await Task.Delay(pollingInterval, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
         private async ValueTask<Response> UpdateStatusAsync(bool async, CancellationToken cancellationToken)
         {
-            if (_hasCompleted)
+            if (HasCompleted)
             {
                 return GetRawResponse();
             }
 
-            using DiagnosticScope scope = _clientDiagnostics.CreateScope();
+            var scopeName = async
+                ? $"{_operationTypeName}.UpdateStatusAsync"
+                : $"{_operationTypeName}.UpdateStatus";
+
+            using DiagnosticScope scope = _clientDiagnostics.CreateScope(scopeName);
             scope.Start();
 
             try
             {
                 var response = async
-                    ? await GetResponseAsync(cancellationToken).ConfigureAwait(false)
-                    : GetResponse(cancellationToken);
+                    ? await _getResponseAsync(cancellationToken).ConfigureAwait(false)
+                    : _getResponse(cancellationToken);
 
                 _rawResponse = response.GetRawResponse();
+
+                var status = _getStatus(response);
+
+                if (status == OperationInternalResponseStatus.Succeeded)
+                {
+                    _value = _parseResponse(response);
+                    HasValue = true;
+                    HasCompleted = true;
+                }
+                else if (status == OperationInternalResponseStatus.Failed)
+                {
+                    _requestFailedException = _getFailure(response);
+                    HasCompleted = true;
+
+                    throw _requestFailedException;
+                }
             }
             catch (Exception e)
             {
@@ -62,27 +142,12 @@ namespace Azure.Core
 
             return GetRawResponse();
         }
+    }
 
-        private static Task<Response<T>> GetResponseAsync(CancellationToken cancellationToken)
-        {
-            throw new Exception(nameof(cancellationToken));
-        }
-
-        private static Response<T> GetResponse(CancellationToken cancellationToken)
-        {
-            throw new Exception(nameof(cancellationToken));
-        }
-
-        private static OperationStatus GetStatus(Response<T> response)
-        {
-            if (response == null)
-            {
-                return OperationStatus.Pending;
-            }
-            else
-            {
-                return OperationStatus.Succeeded;
-            }
-        }
+    internal enum OperationInternalResponseStatus
+    {
+        Pending,
+        Succeeded,
+        Failed
     }
 }
