@@ -63,7 +63,7 @@ namespace Azure.AI.FormRecognizer.Models
             _serviceClient = client.ServiceClient;
             _diagnostics = client.Diagnostics;
 
-            _operationInternal = new (_diagnostics, nameof(RecognizeContentOperation), GetResponseAsync, GetResponse, GetStatus, ParseResponse, GetFailure);
+            _operationInternal = new (nameof(RecognizeContentOperation), _diagnostics, GetResponseAsync, GetResponse, GetStatus, ParseResponse, GetFailure);
         }
 
         /// <summary>
@@ -81,7 +81,7 @@ namespace Azure.AI.FormRecognizer.Models
             // https://github.com/Azure/azure-sdk-for-net/issues/10385
             Id = operationLocation.Split('/').Last();
 
-            _operationInternal = new (_diagnostics, nameof(RecognizeContentOperation), GetResponseAsync, GetResponse, GetStatus, ParseResponse, GetFailure);
+            _operationInternal = new (nameof(RecognizeContentOperation), _diagnostics, GetResponseAsync, GetResponse, GetStatus, ParseResponse, GetFailure);
         }
 
         /// <summary>

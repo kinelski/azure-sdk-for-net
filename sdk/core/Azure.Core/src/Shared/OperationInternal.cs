@@ -10,41 +10,45 @@ namespace Azure.Core
 {
     internal class OperationInternal<TValue, TResult>
     {
-        private ClientDiagnostics _clientDiagnostics;
+        private readonly string _operationTypeName;
+
+        private readonly TimeSpan _defaultPollingInterval;
+
+        private readonly ClientDiagnostics _clientDiagnostics;
+
+        private readonly Func<CancellationToken, Task<Response<TResult>>> _getResponseAsync;
+
+        private readonly Func<CancellationToken, Response<TResult>> _getResponse;
+
+        private readonly Func<Response<TResult>, OperationInternalResponseStatus> _getStatus;
+
+        private readonly Func<Response<TResult>, TValue> _parseResponse;
+
+        private readonly Func<Response<TResult>, RequestFailedException> _getFailure;
 
         private Response _rawResponse;
-
-        private string _operationTypeName;
 
         private TValue _value;
 
         private RequestFailedException _requestFailedException;
 
-        private Func<CancellationToken, Task<Response<TResult>>> _getResponseAsync;
-
-        private Func<CancellationToken, Response<TResult>> _getResponse;
-
-        private Func<Response<TResult>, OperationInternalResponseStatus> _getStatus;
-
-        private Func<Response<TResult>, TValue> _parseResponse;
-
-        private Func<Response<TResult>, RequestFailedException> _getFailure;
-
-        public OperationInternal(ClientDiagnostics clientDiagnostics,
-            string operationTypeName,
+        public OperationInternal(string operationTypeName,
+            ClientDiagnostics clientDiagnostics,
             Func<CancellationToken, Task<Response<TResult>>> getResponseAsync,
             Func<CancellationToken, Response<TResult>> getResponse,
             Func<Response<TResult>, OperationInternalResponseStatus> getStatus,
             Func<Response<TResult>, TValue> parseResponse,
-            Func<Response<TResult>, RequestFailedException> getFailure)
+            Func<Response<TResult>, RequestFailedException> getFailure,
+            TimeSpan? defaultPollingInterval = null)
         {
-            _clientDiagnostics = clientDiagnostics;
             _operationTypeName = operationTypeName;
+            _clientDiagnostics = clientDiagnostics;
             _getResponseAsync = getResponseAsync;
             _getResponse = getResponse;
             _getStatus = getStatus;
             _parseResponse = parseResponse;
             _getFailure = getFailure;
+            _defaultPollingInterval = defaultPollingInterval ?? TimeSpan.FromSeconds(1);
         }
 
         public bool HasCompleted { get; private set; }
@@ -78,9 +82,8 @@ namespace Azure.Core
         public Response UpdateStatus(CancellationToken cancellationToken) =>
             UpdateStatusAsync(async: false, cancellationToken).EnsureCompleted();
 
-        // TODO: set polling time.
         public async ValueTask<Response<TValue>> WaitForCompletionAsync(CancellationToken cancellationToken) =>
-            await WaitForCompletionAsync(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+            await WaitForCompletionAsync(_defaultPollingInterval, cancellationToken).ConfigureAwait(false);
 
         public async ValueTask<Response<TValue>> WaitForCompletionAsync(TimeSpan pollingInterval, CancellationToken cancellationToken)
         {
