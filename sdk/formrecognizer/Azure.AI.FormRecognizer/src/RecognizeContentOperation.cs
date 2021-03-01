@@ -175,7 +175,6 @@ namespace Azure.AI.FormRecognizer.Models
             return new FormPageCollection(pages);
         }
 
-        // TODO: check async/sync difference.
         private RequestFailedException GetFailure(Response<AnalyzeOperationResult> response) =>
             ClientCommon.CreateExceptionForFailedOperationAsync(async: false, _diagnostics,
                 response.GetRawResponse(), response.Value.AnalyzeResult.Errors).EnsureCompleted();
