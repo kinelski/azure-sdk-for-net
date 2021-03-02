@@ -106,11 +106,7 @@ namespace Azure.Core
                 return GetRawResponse();
             }
 
-            var scopeName = async
-                ? $"{_operationTypeName}.UpdateStatusAsync"
-                : $"{_operationTypeName}.UpdateStatus";
-
-            using DiagnosticScope scope = _clientDiagnostics.CreateScope(scopeName);
+            using DiagnosticScope scope = _clientDiagnostics.CreateScope($"{_operationTypeName}.UpdateStatus");
             scope.Start();
 
             try
