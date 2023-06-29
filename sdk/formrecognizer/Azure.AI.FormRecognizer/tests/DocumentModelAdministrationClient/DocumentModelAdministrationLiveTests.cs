@@ -225,7 +225,7 @@ namespace Azure.AI.FormRecognizer.DocumentAnalysis.Tests
 
             CollectionAssert.AreEquivalent(tags, model.Tags);
 
-            // (TODO) Reenable validation once the following service issue has been fixed: https://github.com/Azure/azure-sdk-for-net/issues/37172
+            // TODO: reenable validation once the following service issue has been fixed: https://github.com/Azure/azure-sdk-for-net/issues/37172
             // AssertDocumentTypeDictionariesAreEquivalent(sourceModel.DocumentTypes, model.DocumentTypes);
         }
 
@@ -324,7 +324,7 @@ namespace Azure.AI.FormRecognizer.DocumentAnalysis.Tests
             Assert.AreEqual(expected.ApiVersion, model.ApiVersion);
             Assert.AreEqual(expected.CreatedOn, model.CreatedOn);
 
-            // (TODO) This assertion should not need a conditional block but we need it because of a service issue.
+            // TODO: this assertion should not need a conditional block but we need it because of a service issue.
             // Remove the condition once this issue is fixed: https://github.com/Azure/azure-sdk-for-net/issues/35809
             if (_serviceVersion > DocumentAnalysisClientOptions.ServiceVersion.V2022_08_31)
             {
@@ -398,7 +398,7 @@ namespace Azure.AI.FormRecognizer.DocumentAnalysis.Tests
                 Assert.AreEqual(expected.ApiVersion, model.ApiVersion);
                 Assert.AreEqual(expected.CreatedOn, model.CreatedOn);
 
-                // (TODO) This assertion should not need a conditional block but we need it because of a service issue.
+                // TODO: this assertion should not need a conditional block but we need it because of a service issue.
                 // Remove the condition once this issue is fixed: https://github.com/Azure/azure-sdk-for-net/issues/35809
                 if (_serviceVersion > DocumentAnalysisClientOptions.ServiceVersion.V2022_08_31)
                 {
