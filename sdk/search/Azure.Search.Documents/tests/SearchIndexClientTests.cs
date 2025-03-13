@@ -132,6 +132,23 @@ namespace Azure.Search.Documents.Tests
         }
 
         [Test]
+        [LiveOnly]
+        [ServiceVersion(Min = SearchClientOptions.ServiceVersion.V2025_03_01_Preview)]
+        public async Task GetIndexStatsSummary()
+        {
+            await using SearchResources resources = await SearchResources.GetSharedHotelsIndexAsync(this);
+
+            SearchIndexClient client = resources.GetIndexClient();
+            Response<ListIndexStatsSummary> response = await client.GetIndexStatsSummaryAsync();
+            Assert.AreEqual(200, response.GetRawResponse().Status);
+            Assert.IsNotNull(response.Value);
+            Assert.IsNotNull(response.Value.IndexesStatistics);
+            Assert.AreEqual(1, response.Value.IndexesStatistics.Count);
+
+            IndexStatisticsSummary summary = response.Value.IndexesStatistics[0];
+        }
+
+        [Test]
         [SyncOnly]
         public void CreateIndexParameterValidation()
         {
