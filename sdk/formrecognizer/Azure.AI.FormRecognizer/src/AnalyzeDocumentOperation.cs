@@ -124,6 +124,16 @@ namespace Azure.AI.FormRecognizer.DocumentAnalysis
             Id = string.Join("/", substrs, substrs.Length - 4, 3);
         }
 
+        private readonly RequestMethod _method;
+        private readonly Uri _startRequestUri;
+
+        internal AnalyzeDocumentOperation(DocumentAnalysisRestClient serviceClient, ClientDiagnostics diagnostics, string operationLocation, Response postResponse, Request request)
+            : this(serviceClient, diagnostics, operationLocation, postResponse)
+        {
+            _method = request.Method;
+            _startRequestUri = request.Uri.ToUri();
+        }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="AnalyzeDocumentOperation"/> class. This constructor
         /// is intended to be used for mocking only.
@@ -180,6 +190,16 @@ namespace Azure.AI.FormRecognizer.DocumentAnalysis
         /// </remarks>
         public override async ValueTask<Response> UpdateStatusAsync(CancellationToken cancellationToken = default) =>
             await _operationInternal.UpdateStatusAsync(cancellationToken).ConfigureAwait(false);
+
+        /// <inheritdoc/>
+        public override RehydrationToken? GetRehydrationToken()
+        {
+            var nextRequestMessage = _serviceClient.CreateDocumentModelsGetAnalyzeResultRequest(_modelId, _resultId);
+            var nextRequestUri = nextRequestMessage.Request.Uri.ToUri();
+
+            return NextLinkOperationImplementation.GetRehydrationToken(_method, _startRequestUri,
+                nextRequestUri.AbsoluteUri, "OperationLocation", null, OperationFinalStateVia.OperationLocation.ToString(), Id);
+        }
 
         async ValueTask<OperationState<AnalyzeResult>> IOperation<AnalyzeResult>.UpdateStateAsync(bool async, CancellationToken cancellationToken)
         {

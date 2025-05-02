@@ -29,6 +29,10 @@ namespace Azure.AI.FormRecognizer.DocumentAnalysis
         internal readonly ClientDiagnostics Diagnostics;
 
         /// <summary>
+        /// </summary>
+        public HttpPipeline Pipeline { get; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="DocumentAnalysisClient"/> class.
         /// </summary>
         /// <param name="endpoint">The endpoint to use for connecting to the Form Recognizer Azure Cognitive Service.</param>
@@ -62,8 +66,8 @@ namespace Azure.AI.FormRecognizer.DocumentAnalysis
             options ??= new DocumentAnalysisClientOptions();
 
             Diagnostics = new ClientDiagnostics(options);
-            var pipeline = HttpPipelineBuilder.Build(options, new AzureKeyCredentialPolicy(credential, Constants.AuthorizationHeader));
-            ServiceClient = new DocumentAnalysisRestClient(Diagnostics, pipeline, endpoint, options.VersionString);
+            Pipeline = HttpPipelineBuilder.Build(options, new AzureKeyCredentialPolicy(credential, Constants.AuthorizationHeader));
+            ServiceClient = new DocumentAnalysisRestClient(Diagnostics, Pipeline, endpoint, options.VersionString);
         }
 
         /// <summary>
@@ -100,8 +104,8 @@ namespace Azure.AI.FormRecognizer.DocumentAnalysis
             string defaultScope = $"{(string.IsNullOrEmpty(options.Audience?.ToString()) ? DocumentAnalysisAudience.AzurePublicCloud : options.Audience)}/.default";
 
             Diagnostics = new ClientDiagnostics(options);
-            var pipeline = HttpPipelineBuilder.Build(options, new BearerTokenAuthenticationPolicy(credential, defaultScope));
-            ServiceClient = new DocumentAnalysisRestClient(Diagnostics, pipeline, endpoint, options.VersionString);
+            Pipeline = HttpPipelineBuilder.Build(options, new BearerTokenAuthenticationPolicy(credential, defaultScope));
+            ServiceClient = new DocumentAnalysisRestClient(Diagnostics, Pipeline, endpoint, options.VersionString);
         }
 
         /// <summary>
@@ -274,16 +278,17 @@ namespace Azure.AI.FormRecognizer.DocumentAnalysis
             try
             {
                 var request = new AnalyzeDocumentRequest() { UrlSource = documentUri };
-                var response = await ServiceClient.DocumentModelsAnalyzeDocumentAsync(
-                    modelId,
+                using var message = ServiceClient.CreateDocumentModelsAnalyzeDocumentRequest(modelId,
                     options.Pages.Count == 0 ? null : string.Join(",", options.Pages),
                     options.Locale,
                     Constants.DefaultStringIndexType,
                     options.Features.Count == 0 ? null : options.Features,
-                    request,
+                    request);
+                var response = await ServiceClient.DocumentModelsAnalyzeDocumentAsync(
+                    message,
                     cancellationToken).ConfigureAwait(false);
 
-                var operation = new AnalyzeDocumentOperation(ServiceClient, Diagnostics, response.Headers.OperationLocation, response.GetRawResponse());
+                var operation = new AnalyzeDocumentOperation(ServiceClient, Diagnostics, response.Headers.OperationLocation, response.GetRawResponse(), message.Request);
 
                 if (waitUntil == WaitUntil.Completed)
                 {

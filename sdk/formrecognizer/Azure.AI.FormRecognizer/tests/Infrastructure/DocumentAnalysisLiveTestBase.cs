@@ -22,7 +22,7 @@ namespace Azure.AI.FormRecognizer.DocumentAnalysis.Tests
         protected readonly DocumentAnalysisClientOptions.ServiceVersion _serviceVersion;
 
         public DocumentAnalysisLiveTestBase(bool isAsync, DocumentAnalysisClientOptions.ServiceVersion serviceVersion)
-            : base(isAsync)
+            : base(isAsync, RecordedTestMode.Live)
         {
             _serviceVersion = serviceVersion;
 

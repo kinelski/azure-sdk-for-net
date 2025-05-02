@@ -31,6 +31,38 @@ namespace Azure.AI.FormRecognizer.DocumentAnalysis.Tests
         {
         }
 
+        [Test]
+        [AsyncOnly]
+        [TestCase(WaitUntil.Started)]
+        [TestCase(WaitUntil.Completed)]
+        [ServiceVersion(Min = DocumentAnalysisClientOptions.LatestVersion)]
+        public async Task RehydrationTokenProofOfConcept(WaitUntil waitUntil)
+        {
+            var client = CreateDocumentAnalysisClient(out DocumentAnalysisClient nonInstrumentedClient);
+
+            var uri = DocumentAnalysisTestEnvironment.CreateUri(TestFile.Form1);
+            var operation = await client.AnalyzeDocumentFromUriAsync(waitUntil, "prebuilt-document", uri);
+
+            var token = operation.GetRehydrationToken();
+            var sameOp = await Operation.RehydrateAsync<AnalyzeResult>(nonInstrumentedClient.Pipeline, token.Value);
+
+            await sameOp.WaitForCompletionAsync();
+
+            Assert.IsTrue(sameOp.HasValue);
+
+            AnalyzeResult result = sameOp.Value;
+            DocumentPage page = result.Pages.Single();
+
+            // The expected values are based on the values returned by the service, and not the actual
+            // values present in the document. We are not testing the service here, but the SDK.
+
+            Assert.AreEqual(DocumentPageLengthUnit.Pixel, page.Unit);
+            Assert.AreEqual(1700, page.Width);
+            Assert.AreEqual(2200, page.Height);
+            Assert.AreEqual(0, page.Angle);
+            Assert.AreEqual(54, page.Lines.Count);
+        }
+
         #region Business Cards
 
         [RecordedTest]

@@ -83,22 +83,8 @@ namespace Azure.AI.FormRecognizer.DocumentAnalysis
         }
 
         /// <summary> Analyzes document with document model. </summary>
-        /// <param name="modelId"> Unique document model name. </param>
-        /// <param name="pages"> List of 1-based page numbers to analyze.  Ex. "1-3,5,7-9". </param>
-        /// <param name="locale"> Locale hint for text recognition and document analysis.  Value may contain only the language code (ex. "en", "fr") or BCP 47 language tag (ex. "en-US"). </param>
-        /// <param name="stringIndexType"> Method used to compute string offset and length. </param>
-        /// <param name="features"> List of optional analysis features. </param>
-        /// <param name="analyzeRequest"> Analyze request parameters. </param>
-        /// <param name="cancellationToken"> The cancellation token to use. </param>
-        /// <exception cref="ArgumentNullException"> <paramref name="modelId"/> is null. </exception>
-        public async Task<ResponseWithHeaders<DocumentAnalysisDocumentModelsAnalyzeDocumentHeaders>> DocumentModelsAnalyzeDocumentAsync(string modelId, string pages = null, string locale = null, StringIndexType? stringIndexType = null, IEnumerable<DocumentAnalysisFeature> features = null, AnalyzeDocumentRequest analyzeRequest = null, CancellationToken cancellationToken = default)
+        public async Task<ResponseWithHeaders<DocumentAnalysisDocumentModelsAnalyzeDocumentHeaders>> DocumentModelsAnalyzeDocumentAsync(HttpMessage message, CancellationToken cancellationToken = default)
         {
-            if (modelId == null)
-            {
-                throw new ArgumentNullException(nameof(modelId));
-            }
-
-            using var message = CreateDocumentModelsAnalyzeDocumentRequest(modelId, pages, locale, stringIndexType, features, analyzeRequest);
             await _pipeline.SendAsync(message, cancellationToken).ConfigureAwait(false);
             var headers = new DocumentAnalysisDocumentModelsAnalyzeDocumentHeaders(message.Response);
             switch (message.Response.Status)
